@@ -221,7 +221,7 @@ SQL;
     $friend_ids = db_execute('SELECT another FROM relations WHERE one = ?', [$current_user['id']])->fetchAll(PDO::FETCH_COLUMN, 0);
 
     $entries_of_friends = array();
-    $stmt = db_execute('SELECT id, body, created_at FROM entries WHERE user_id IN ? ORDER BY id DESC LIMIT 10', [$friend_ids]);
+    $stmt = db_execute('SELECT id, body, created_at FROM entries WHERE user_id IN ? ORDER BY id DESC LIMIT 10', ['(' . implode(',', $friend_ids) . ')']);
     while ($entry = $stmt->fetch()) {
         $entry['title'] = explode("\n", $entry['body'])[0];
         $entries_of_friends[] = $entry;
@@ -241,7 +241,7 @@ ORDER BY c.id DESC
 LIMIT 10
 SQL;
 
-    $comments_of_friends = db_execute($comments_of_friends_query, [$friend_ids, $current_user['id'], $friend_ids])->fetchAll();
+    $comments_of_friends = db_execute($comments_of_friends_query, ['(' . implode(',', $friend_ids) . ')', $current_user['id'], '(' . implode(',', $friend_ids) . ')'])->fetchAll();
 
     $query = <<<SQL
 SELECT o.account_name AS owner_account_name, o.nick_name AS owner_nick_name, MAX(f.created_at) AS updated
