@@ -11,7 +11,7 @@
       <dt>性別</dt><dd id="prof-sex"><?php h($profile['sex']) ?: '未入力' ?></dd>
       <dt>誕生日</dt><dd id="prof-birthday"><?php h($profile['birthday']) ?: '未入力' ?></dd>
       <dt>住んでいる県</dt><dd id="prof-pref"><?php h($profile['pref']) ?: '未入力' ?></dd>
-      <dt>友だちの人数</dt><dd id="prof-friends"><a href="/friends"><?php h(sizeof($friends)) ?>人</a></dd>
+      <dt>友だちの人数</dt><dd id="prof-friends"><a href="/friends"><?php h($friend_count) ?>人</a></dd>
     </dl>
   </div>
   <div class="col-md-4">
