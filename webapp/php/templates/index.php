@@ -19,7 +19,7 @@
     <div id="entries">
       <ul class="list-group">
         <?php foreach ($entries as $entry) { ?>
-        <li class="list-group-item entries-entry"><a href="/diary/entry/<?php h($entry['id']) ?>"><?php h(preg_split('/\n/', $entry['body'])[0]) ?></a></li>
+        <li class="list-group-item entries-entry"><a href="/diary/entry/<?php h($entry['id']) ?>"><?php h(explode("\n", $entry['body'])[0]) ?></a></li>
         <?php } ?>
       </ul>
     </div>
@@ -30,8 +30,7 @@
     <div id="footprints">
       <ul class="list-group">
         <?php foreach ($footprints as $fp) { ?>
-        <?php $owner = get_user($fp['owner_id']) ?>
-        <li class="list-group-item footprints-footprint"><?php h($fp['updated']) ?>: <a href="/profile/<?php h($owner['account_name']) ?>"><?php h($owner['nick_name']) ?>さん</a>
+        <li class="list-group-item footprints-footprint"><?php h($fp['updated']) ?>: <a href="/profile/<?php h($fp['owner_account_name']) ?>"><?php h($fp['owner_nick_name']) ?>さん</a>
         <?php } ?>
       </ul>
     </div>
@@ -63,7 +62,7 @@
       <ul class="list-group">
         <?php $entry_owner = get_user($entry['user_id']) ?>
         <li class="list-group-item entry-owner"><a href="/diary/entries/<?php h($entry_owner['account_name']) ?>"><?php h($entry_owner['nick_name']) ?>さん</a>:
-        <li class="list-group-item entry-title"><a href="/diary/entry/<?php h($entry['id']) ?>"><?php h(preg_split('/\n/', $entry['body'])[0]) ?></a>
+        <li class="list-group-item entry-title"><a href="/diary/entry/<?php h($entry['id']) ?>"><?php h($entry['title']) ?></a>
         <li class="list-group-item entry-created-at">投稿時刻:<?php h($entry['created_at']) ?>
       </ul>
     </div>
@@ -77,9 +76,8 @@
     <?php foreach ($comments_of_friends as $comment) { ?>
     <div class="friend-comment">
       <ul class="list-group">
-        <?php $comment_owner = get_user($comment['user_id']) ?>
-        <?php $entry = db_execute('SELECT * FROM entries WHERE id=?', array($comment['entry_id']))->fetch() ?>
-        <?php $entry_owner = get_user($entry['user_id']) ?>
+        <?php $comment_owner = get_user($comment['comment_owner_id']) ?>
+        <?php $entry_owner = get_user($entry['entry_owner_id']) ?>
         <li class="list-group-item comment-from-to">
           <a href="/profile/<?php h($comment_owner['account_name']) ?>"><?php h($comment_owner['nick_name']) ?>さん</a>から
           <a href="/profile/<?php h($entry_owner['account_name']) ?>"><?php h($entry_owner['nick_name']) ?>さん</a>へのコメント:
