@@ -222,7 +222,7 @@ SQL;
     $friend_ids_in_clause = substr(str_repeat(',?', count($friend_ids)), 1);
 
     $entries_of_friends = array();
-    $stmt = db_execute('SELECT id, user_id, body, created_at FROM entries WHERE user_id IN (' . $friend_ids_in_clause . ') ORDER BY created_at DESC LIMIT 10', [$friend_ids]);
+    $stmt = db_execute('SELECT id, user_id, body, created_at FROM entries WHERE user_id IN (' . $friend_ids_in_clause . ') ORDER BY created_at DESC LIMIT 10', $friend_ids);
     while ($entry = $stmt->fetch()) {
         $entry['title'] = explode("\n", $entry['body'])[0];
         $entries_of_friends[] = $entry;
