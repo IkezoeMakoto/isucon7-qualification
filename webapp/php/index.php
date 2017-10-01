@@ -31,7 +31,7 @@ $app = new \Slim\Slim(array(
         'host' => getenv('ISUCON5_DB_HOST') ?: 'localhost',
         'port' => (int)getenv('ISUCON5_DB_PORT') ?: 3306,
         'username' => getenv('ISUCON5_DB_USER') ?: 'root',
-        'password' => getenv('ISUCON5_DB_PASSWORD'),
+        'password' => getenv('ISUCON5_DB_PASSWORD') ?: 'root',
         'database' => getenv('ISUCON5_DB_NAME') ?: 'isucon5q'
     ),
     'cookies.encrypt' => true,
