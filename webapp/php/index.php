@@ -213,7 +213,7 @@ SELECT c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
 FROM comments c
 JOIN entries e ON c.entry_id = e.id
 WHERE e.user_id = ?
-ORDER BY c.created DESC
+ORDER BY c.created_at DESC
 LIMIT 10
 SQL;
     $comments_for_me = db_execute($comments_for_me_query, array($current_user['id']))->fetchAll();
