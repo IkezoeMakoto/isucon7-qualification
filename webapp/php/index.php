@@ -204,7 +204,7 @@ $app->get('/', function () use ($app) {
 
     $profile = db_execute('SELECT first_name, last_name, sex, birthday, pref FROM profiles WHERE user_id = ?', array(current_user()['id']))->fetch();
 
-    $entries_query = 'SELECT id, body FROM entries WHERE user_id = ? ORDER BY id LIMIT 5';
+    $entries_query = 'SELECT id, body FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
     $stmt = db_execute($entries_query, array($current_user['id']));
     $entries = $stmt->fetchAll();
 
@@ -213,15 +213,16 @@ SELECT c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
 FROM comments c
 JOIN entries e ON c.entry_id = e.id
 WHERE e.user_id = ?
-ORDER BY c.id DESC
+ORDER BY c.created DESC
 LIMIT 10
 SQL;
     $comments_for_me = db_execute($comments_for_me_query, array($current_user['id']))->fetchAll();
 
     $friend_ids = db_execute('SELECT another FROM relations WHERE one = ?', [$current_user['id']])->fetchAll(PDO::FETCH_COLUMN, 0);
+    $friend_ids_in_clause = substr(str_repeat(',?', count($friend_ids)), 1);
 
     $entries_of_friends = array();
-    $stmt = db_execute('SELECT id, body, created_at FROM entries WHERE user_id IN ? ORDER BY id DESC LIMIT 10', ['(' . implode(',', $friend_ids) . ')']);
+    $stmt = db_execute('SELECT id, user_id, body, created_at FROM entries WHERE user_id IN (' . $friend_ids_in_clause . ') ORDER BY created_at DESC LIMIT 10', [$friend_ids]);
     while ($entry = $stmt->fetch()) {
         $entry['title'] = explode("\n", $entry['body'])[0];
         $entries_of_friends[] = $entry;
@@ -231,17 +232,18 @@ SQL;
 SELECT c.user_id AS comment_owner_id, e.user_id AS entry_owner_id, c.comment AS comment, c.created_at AS created_at
 FROM comments c
 INNER JOIN entries e ON c.entry_id = e.id
-WHERE c.user_id IN ?
+WHERE c.user_id IN ($friend_ids_in_clause)
     AND e.private <> 1
     AND (
       e.user_id = ? OR
-      e.user_id IN ?
+      e.user_id IN ($friend_ids_in_clause)
     )
-ORDER BY c.id DESC
+ORDER BY c.created_at DESC
 LIMIT 10
 SQL;
 
-    $comments_of_friends = db_execute($comments_of_friends_query, ['(' . implode(',', $friend_ids) . ')', $current_user['id'], '(' . implode(',', $friend_ids) . ')'])->fetchAll();
+    $params = array_merge($friend_ids, [$current_user['id']], $friend_ids);
+    $comments_of_friends = db_execute($comments_of_friends_query, $params)->fetchAll();
 
     $query = <<<SQL
 SELECT o.account_name AS owner_account_name, o.nick_name AS owner_nick_name, MAX(f.created_at) AS updated

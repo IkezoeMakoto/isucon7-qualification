@@ -77,7 +77,7 @@
     <div class="friend-comment">
       <ul class="list-group">
         <?php $comment_owner = get_user($comment['comment_owner_id']) ?>
-        <?php $entry_owner = get_user($entry['entry_owner_id']) ?>
+        <?php $entry_owner = get_user($comment['entry_owner_id']) ?>
         <li class="list-group-item comment-from-to">
           <a href="/profile/<?php h($comment_owner['account_name']) ?>"><?php h($comment_owner['nick_name']) ?>さん</a>から
           <a href="/profile/<?php h($entry_owner['account_name']) ?>"><?php h($entry_owner['nick_name']) ?>さん</a>へのコメント:
