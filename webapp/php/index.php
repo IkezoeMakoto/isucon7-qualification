@@ -260,7 +260,7 @@ $app->get('/fetch', function (Request $request, Response $response) {
     $stmt = $dbh->query('SELECT id FROM channel');
     $channelIds = $stmt->fetchall(PDO::FETCH_COLUMN, 0);
 
-    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) FROM haveread WHERE user_id = ?");
+    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) FROM haveread WHERE user_id = ? GROUP BY channel_id");
     $stmt->execute([$userId]);
     $maxMessageIds = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
@@ -272,7 +272,7 @@ $app->get('/fetch', function (Request $request, Response $response) {
                 "FROM message ".
                 "WHERE channel_id = ? AND ? < id"
             );
-            $stmt->execute([$channelId, $maxMessageIds[$channelId]);
+            $stmt->execute([$channelId, $maxMessageIds[$channelId]]);
         } else {
             $stmt = $dbh->prepare(
                 "SELECT COUNT(*) as cnt ".
