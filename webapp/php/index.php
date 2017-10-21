@@ -234,13 +234,13 @@ $app->get('/message', function (Request $request, Response $response) {
 
     $stmt = $dbh->prepare("SELECT id, name, display_name, avatar_icon FROM user");
     $stmt->execute();
-    $users = $stmt->fetchAll(PDO::FETCH_GROUP, 0);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
     $res = [];
     foreach ($rows as $row) {
         $r = [];
         $r['id'] = (int)$row['id'];
-        $r['user'] = $users[$row['user_id']];
+        $r['user'] = $users[$row['user_id']][0];
         $r['date'] = str_replace('-', '/', $row['created_at']);
         $r['content'] = $row['content'];
         $res[] = $r;
