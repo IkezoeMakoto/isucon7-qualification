@@ -27,7 +27,6 @@ function getPDO()
     $user = getenv('ISUBATA_DB_USER') ?: 'root';
     $password = getenv('ISUBATA_DB_PASSWORD') ?: '';
     $dsn = "mysql:host={$host};port={$port};dbname=isubata;charset=utf8mb4";
-
     $pdo = new PDO(
         $dsn,
         $user,
@@ -66,6 +65,19 @@ $app->get('/initialize', function (Request $request, Response $response) {
     $response->withStatus(204);
 });
 
+$app->get('/save_images/{from}/{to}', function (Request $request, Response $response) {
+    set_time_limit(0);
+    $dbh = getPDO();
+    $stmt = $dbh->prepare("SELECT name, data FROM image WHERE id >= ? AND id < ?");
+    $stmt->execute([$request->getAttribute('from'), $request->getAttribute('to')]);
+    $rows = $stmt->fetchall();
+    foreach ($rows as $row) {
+//        $ext = pathinfo($row['name'], PATHINFO_EXTENSION);
+//        $mime = ext2mime($ext);
+        file_put_contents('/home/isucon/isubata/webapp/public/icons/' . $row['name'], $row['data']);
+    }
+});
+
 function db_get_user($dbh, $userId)
 {
     $stmt = $dbh->prepare("SELECT * FROM user WHERE id = ?");
@@ -101,18 +113,9 @@ $loginRequired = function (Request $request, Response $response, $next) use ($co
     return $response;
 };
 
-function random_string($length)
-{
-    $str = "";
-    while ($length--) {
-        $str .= str_shuffle("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")[0];
-    }
-    return $str;
-}
-
 function register($dbh, $userName, $password)
 {
-    $salt = random_string(20);
+    $salt = '';
     $passDigest = sha1(utf8_encode($salt . $password));
     $stmt = $dbh->prepare(
         "INSERT INTO user (name, salt, password, display_name, avatar_icon, created_at) ".
@@ -231,23 +234,23 @@ $app->get('/message', function (Request $request, Response $response) {
     );
     $stmt->execute([$lastMessageId, $channelId]);
     $rows = $stmt->fetchall();
+
+    $stmt = $dbh->prepare("SELECT id, name, display_name, avatar_icon FROM user");
+    $stmt->execute();
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
+
     $res = [];
     foreach ($rows as $row) {
         $r = [];
         $r['id'] = (int)$row['id'];
-        $stmt = $dbh->prepare("SELECT name, display_name, avatar_icon FROM user WHERE id = ?");
-        $stmt->execute([$row['user_id']]);
-        $r['user'] = $stmt->fetch();
+        $r['user'] = $users[$row['user_id']][0];
         $r['date'] = str_replace('-', '/', $row['created_at']);
         $r['content'] = $row['content'];
         $res[] = $r;
     }
     $res = array_reverse($res);
 
-    $maxMessageId = 0;
-    foreach ($rows as $row) {
-        $maxMessageId = max($maxMessageId, $row['id']);
-    }
+    $maxMessageId = $rows[0]['id'];
     $stmt = $dbh->prepare(
         "INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at) ".
         "VALUES (?, ?, ?, NOW(), NOW()) ".
@@ -267,40 +270,33 @@ $app->get('/fetch', function (Request $request, Response $response) {
 
     $dbh = getPDO();
     $stmt = $dbh->query('SELECT id FROM channel');
-    $rows = $stmt->fetchall();
-    $channelIds = [];
-    foreach ($rows as $row) {
-        $channelIds[] = (int)$row['id'];
-    }
+    $channelIds = $stmt->fetchall(PDO::FETCH_COLUMN, 0);
+
+    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) as last_message_id FROM haveread WHERE user_id = ? GROUP BY channel_id");
+    $stmt->execute([$userId]);
+    $maxMessageIds = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
+
+    $stmt = $dbh->prepare("SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id");
+    $stmt->execute();
+    $allMessageCounts = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
     $res = [];
     foreach ($channelIds as $channelId) {
-        $stmt = $dbh->prepare(
-            "SELECT * ".
-            "FROM haveread ".
-            "WHERE user_id = ? AND channel_id = ?"
-        );
-        $stmt->execute([$userId, $channelId]);
-        $row = $stmt->fetch();
-        if ($row) {
-            $lastMessageId = $row['message_id'];
+        if (isset($maxMessageIds[$channelId][0]['last_message_id'])) {
             $stmt = $dbh->prepare(
-                "SELECT COUNT(*) as cnt ".
+                "SELECT COUNT(id) as cnt ".
                 "FROM message ".
                 "WHERE channel_id = ? AND ? < id"
             );
-            $stmt->execute([$channelId, $lastMessageId]);
+            $stmt->execute([$channelId, $maxMessageIds[$channelId][0]['last_message_id']]);
+            $unread = $stmt->fetch()['cnt'];
         } else {
-            $stmt = $dbh->prepare(
-                "SELECT COUNT(*) as cnt ".
-                "FROM message ".
-                "WHERE channel_id = ?"
-            );
-            $stmt->execute([$channelId]);
+            $unread = $allMessageCounts[$channelId][0]['cnt'];
         }
+
         $r = [];
-        $r['channel_id'] = $channelId;
-        $r['unread'] = (int)$stmt->fetch()['cnt'];
+        $r['channel_id'] = (int)$channelId;
+        $r['unread'] = (int)$unread;
         $res[] = $r;
     }
 
@@ -453,10 +449,7 @@ $app->post('/profile', function (Request $request, Response $response) {
     }
 
     if ($avatarName && $avatarData) {
-        $stmt = $pdo->prepare("INSERT INTO image (name, data) VALUES (?, ?)");
-        $stmt->bindParam(1, $avatarName);
-        $stmt->bindParam(2, $avatarData, PDO::PARAM_LOB);
-        $stmt->execute();
+        file_put_contents('/home/isucon/isubata/webapp/public/icons/' . $avatarName, $avatarData);
         $stmt = $pdo->prepare("UPDATE user SET avatar_icon = ? WHERE id = ?");
         $stmt->execute([$avatarName, $userId]);
     }
@@ -483,21 +476,5 @@ function ext2mime($ext)
             return '';
     }
 }
-
-$app->get('/icons/{filename}', function (Request $request, Response $response) {
-    $filename = $request->getAttribute('filename');
-    $stmt = getPDO()->prepare("SELECT * FROM image WHERE name = ?");
-    $stmt->execute([$filename]);
-    $row = $stmt->fetch();
-
-    $ext = pathinfo($filename, PATHINFO_EXTENSION);
-    $mime = ext2mime($ext);
-
-    if ($row && $mime) {
-        $response->write($row['data']);
-        return $response->withHeader('Content-type', $mime);
-    }
-    return $response->withStatus(404);
-});
 
 $app->run();
