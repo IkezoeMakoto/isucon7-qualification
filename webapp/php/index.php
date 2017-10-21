@@ -247,10 +247,7 @@ $app->get('/message', function (Request $request, Response $response) {
     }
     $res = array_reverse($res);
 
-    $maxMessageId = 0;
-    foreach ($rows as $row) {
-        $maxMessageId = max($maxMessageId, $row['id']);
-    }
+    $maxMessageId = $rows[0]['id'];
     $stmt = $dbh->prepare(
         "INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at) ".
         "VALUES (?, ?, ?, NOW(), NOW()) ".
