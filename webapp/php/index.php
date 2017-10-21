@@ -69,7 +69,7 @@ $app->get('/save_images/{from}/{to}', function (Request $request, Response $resp
     set_time_limit(0);
     $dbh = getPDO();
     $stmt = $dbh->prepare("SELECT name, data FROM image WHERE id >= ? AND id < ?");
-    $stmt->execute([$request->getAttribute('from'), $request->getAttribute('to')])
+    $stmt->execute([$request->getAttribute('from'), $request->getAttribute('to')]);
     $rows = $stmt->fetchall();
     foreach ($rows as $row) {
 //        $ext = pathinfo($row['name'], PATHINFO_EXTENSION);
