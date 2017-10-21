@@ -258,29 +258,21 @@ $app->get('/fetch', function (Request $request, Response $response) {
 
     $dbh = getPDO();
     $stmt = $dbh->query('SELECT id FROM channel');
-    $rows = $stmt->fetchall();
-    $channelIds = [];
-    foreach ($rows as $row) {
-        $channelIds[] = (int)$row['id'];
-    }
+    $channelIds = $stmt->fetchall(PDO::FETCH_COLUMN, 0);
+
+    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) FROM haveread WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $maxMessageIds = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
     $res = [];
     foreach ($channelIds as $channelId) {
-        $stmt = $dbh->prepare(
-            "SELECT * ".
-            "FROM haveread ".
-            "WHERE user_id = ? AND channel_id = ?"
-        );
-        $stmt->execute([$userId, $channelId]);
-        $row = $stmt->fetch();
-        if ($row) {
-            $lastMessageId = $row['message_id'];
+        if (isset($maxMessageIds[$channelId])) {
             $stmt = $dbh->prepare(
                 "SELECT COUNT(*) as cnt ".
                 "FROM message ".
                 "WHERE channel_id = ? AND ? < id"
             );
-            $stmt->execute([$channelId, $lastMessageId]);
+            $stmt->execute([$channelId, $maxMessageIds[$channelId]);
         } else {
             $stmt = $dbh->prepare(
                 "SELECT COUNT(*) as cnt ".
@@ -289,6 +281,7 @@ $app->get('/fetch', function (Request $request, Response $response) {
             );
             $stmt->execute([$channelId]);
         }
+
         $r = [];
         $r['channel_id'] = $channelId;
         $r['unread'] = (int)$stmt->fetch()['cnt'];
