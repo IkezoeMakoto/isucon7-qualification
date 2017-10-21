@@ -265,7 +265,7 @@ $app->get('/fetch', function (Request $request, Response $response) {
     $maxMessageIds = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
     $stmt = $dbh->prepare("SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id");
-    $stmt->execut();
+    $stmt->execute();
     $allMessageCounts = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
     $res = [];
@@ -315,7 +315,7 @@ $app->get('/history/{channel_id}', function (Request $request, Response $respons
 
     $offset = ($page - 1) * $pageSize;
     $stmt = $dbh->prepare(
-        "SELECT id ".
+        "SELECT * ".
         "FROM message ".
         "WHERE channel_id = ? ORDER BY id DESC LIMIT $pageSize OFFSET $offset"
     );
