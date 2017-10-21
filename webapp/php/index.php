@@ -240,9 +240,9 @@ $app->get('/message', function (Request $request, Response $response) {
 
     $maxMessageId = $rows[0]['id'];
     $stmt = $dbh->prepare(
-        "INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at) ".
-        "VALUES (?, ?, ?, NOW(), NOW()) ".
-        "ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()"
+        "INSERT INTO haveread (user_id, channel_id, message_id, created_at) ".
+        "VALUES (?, ?, ?,  NOW()) ".
+        "ON DUPLICATE KEY UPDATE message_id = ?"
     );
     $stmt->execute([$userId, $channelId, $maxMessageId, $maxMessageId]);
     return $response->withJson($res);
@@ -392,8 +392,8 @@ $app->post('/add_channel', function (Request $request, Response $response) {
 
     $dbh = getPDO();
     $stmt = $dbh->prepare(
-        "INSERT INTO channel (name, description, updated_at, created_at) ".
-        "VALUES (?, ?, NOW(), NOW())"
+        "INSERT INTO channel (name, description, created_at) ".
+        "VALUES (?, ?, NOW())"
     );
     $stmt->execute([$name, $description]);
     $channelId = $dbh->lastInsertId();
