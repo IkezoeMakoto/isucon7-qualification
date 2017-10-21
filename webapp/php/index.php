@@ -231,13 +231,16 @@ $app->get('/message', function (Request $request, Response $response) {
     );
     $stmt->execute([$lastMessageId, $channelId]);
     $rows = $stmt->fetchall();
+
+    $stmt = $dbh->prepare("SELECT id, name, display_name, avatar_icon FROM user");
+    $stmt->execute();
+    $users = $stmt->fetchAll(PDO::FETCH_GROUP, 0);
+
     $res = [];
     foreach ($rows as $row) {
         $r = [];
         $r['id'] = (int)$row['id'];
-        $stmt = $dbh->prepare("SELECT name, display_name, avatar_icon FROM user WHERE id = ?");
-        $stmt->execute([$row['user_id']]);
-        $r['user'] = $stmt->fetch();
+        $r['user'] = $users[$row['user_id']];
         $r['date'] = str_replace('-', '/', $row['created_at']);
         $r['content'] = $row['content'];
         $res[] = $r;
