@@ -66,6 +66,18 @@ $app->get('/initialize', function (Request $request, Response $response) {
     $response->withStatus(204);
 });
 
+$app->get('/save_images', function (Request $request, Response $response) {
+    set_time_limit(0);
+    $dbh = getPDO();
+    $stmt = $dbh->query("SELECT name, data FROM image");
+    $rows = $stmt->fetchall();
+    foreach ($rows as $row) {
+//        $ext = pathinfo($row['name'], PATHINFO_EXTENSION);
+//        $mime = ext2mime($ext);
+        file_put_contents('/home/isucon/isubata/webapp/public/icons/' . $row['name'], $row['data']);
+    }
+});
+
 function db_get_user($dbh, $userId)
 {
     $stmt = $dbh->prepare("SELECT id FROM user WHERE id = ?");
@@ -437,10 +449,7 @@ $app->post('/profile', function (Request $request, Response $response) {
     }
 
     if ($avatarName && $avatarData) {
-        $stmt = $pdo->prepare("INSERT INTO image (name, data) VALUES (?, ?)");
-        $stmt->bindParam(1, $avatarName);
-        $stmt->bindParam(2, $avatarData, PDO::PARAM_LOB);
-        $stmt->execute();
+        file_put_contents('/home/isucon/isubata/webapp/public/icons/' . $avatarName, $avatarData);
         $stmt = $pdo->prepare("UPDATE user SET avatar_icon = ? WHERE id = ?");
         $stmt->execute([$avatarName, $userId]);
     }
@@ -467,21 +476,5 @@ function ext2mime($ext)
             return '';
     }
 }
-
-$app->get('/icons/{filename}', function (Request $request, Response $response) {
-    $filename = $request->getAttribute('filename');
-    $stmt = getPDO()->prepare("SELECT * FROM image WHERE name = ?");
-    $stmt->execute([$filename]);
-    $row = $stmt->fetch();
-
-    $ext = pathinfo($filename, PATHINFO_EXTENSION);
-    $mime = ext2mime($ext);
-
-    if ($row && $mime) {
-        $response->write($row['data']);
-        return $response->withHeader('Content-type', $mime);
-    }
-    return $response->withStatus(404);
-});
 
 $app->run();
