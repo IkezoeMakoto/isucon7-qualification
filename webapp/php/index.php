@@ -68,7 +68,7 @@ $app->get('/initialize', function (Request $request, Response $response) {
 
 function db_get_user($dbh, $userId)
 {
-    $stmt = $dbh->prepare("SELECT * FROM user WHERE id = ?");
+    $stmt = $dbh->prepare("SELECT id FROM user WHERE id = ?");
     $stmt->execute([$userId]);
     return $stmt->fetch();
 }
