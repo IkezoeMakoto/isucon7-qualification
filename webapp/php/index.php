@@ -329,7 +329,7 @@ $app->get('/history/{channel_id}', function (Request $request, Response $respons
 
     $offset = ($page - 1) * $pageSize;
     $stmt = $dbh->prepare(
-        "SELECT * ".
+        "SELECT id ".
         "FROM message ".
         "WHERE channel_id = ? ORDER BY id DESC LIMIT $pageSize OFFSET $offset"
     );
