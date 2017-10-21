@@ -101,18 +101,9 @@ $loginRequired = function (Request $request, Response $response, $next) use ($co
     return $response;
 };
 
-function random_string($length)
-{
-    $str = "";
-    while ($length--) {
-        $str .= str_shuffle("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")[0];
-    }
-    return $str;
-}
-
 function register($dbh, $userName, $password)
 {
-    $salt = random_string(20);
+    $salt = '';
     $passDigest = sha1(utf8_encode($salt . $password));
     $stmt = $dbh->prepare(
         "INSERT INTO user (name, salt, password, display_name, avatar_icon, created_at) ".
