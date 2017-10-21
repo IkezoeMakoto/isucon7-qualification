@@ -213,3 +213,16 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2015-09-17  2:50:41
+
+
+--インデックス追加
+ALTER TABLE comments ADD INDEX created_at(created_at);
+ALTER TABLE footprints ADD INDEX created_at(created_at);
+ALTER TABLE entries ADD INDEX created_at(created_at);
+ALTER TABLE relations ADD INDEX created_at(created_at);
+
+--commentカラムの値の文字数を見て、30字以上だったら先頭から27字の文字列を、30字未満だったら全ての文字列を挿入する
+--カラム追加
+ALTER TABLE comments ADD comment_30 varchar(30);
+--データ追加
+UPDATE comments SET comment_30 = LEFT(COALESCE(`comment`, ''), IF(COALESCE(`comment`, '') > 29,27,char_length(COALESCE(`comment`, ''))));
