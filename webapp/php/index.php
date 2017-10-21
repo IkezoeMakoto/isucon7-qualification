@@ -200,76 +200,69 @@ $app->get('/logout', function () use ($app) {
 $app->get('/', function () use ($app) {
     authenticated();
 
-    $profile = db_execute('SELECT * FROM profiles WHERE user_id = ?', array(current_user()['id']))->fetch();
+    $current_user = current_user();
 
-    $entries_query = 'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
-    $stmt = db_execute($entries_query, array(current_user()['id']));
-    $entries = array();
-    while ($entry = $stmt->fetch()) {
-        $entry['is_private'] = ($entry['private'] == 1);
-        list($title, $content) = preg_split('/\n/', $entry['body'], 2);
-        $entry['title'] = $title;
-        $entry['content'] = $content;
-        $entries[] = $entry;
-    }
+    $profile = db_execute('SELECT first_name, last_name, sex, birthday, pref FROM profiles WHERE user_id = ?', array(current_user()['id']))->fetch();
+
+    $entries_query = 'SELECT id, body FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
+    $stmt = db_execute($entries_query, array($current_user['id']));
+    $entries = $stmt->fetchAll();
 
     $comments_for_me_query = <<<SQL
-SELECT c.id AS id, c.entry_id AS entry_id, c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
+SELECT c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
 FROM comments c
 JOIN entries e ON c.entry_id = e.id
 WHERE e.user_id = ?
 ORDER BY c.created_at DESC
 LIMIT 10
 SQL;
-    $comments_for_me = db_execute($comments_for_me_query, array(current_user()['id']))->fetchAll();
+    $comments_for_me = db_execute($comments_for_me_query, array($current_user['id']))->fetchAll();
+
+    $friend_ids = db_execute('SELECT another FROM relations WHERE one = ?', [$current_user['id']])->fetchAll(PDO::FETCH_COLUMN, 0);
+    $friend_ids_in_clause = substr(str_repeat(',?', count($friend_ids)), 1);
 
     $entries_of_friends = array();
-    $stmt = db_execute('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000');
+    $stmt = db_execute('SELECT id, user_id, body, created_at FROM entries WHERE user_id IN (' . $friend_ids_in_clause . ') ORDER BY created_at DESC LIMIT 10', $friend_ids);
     while ($entry = $stmt->fetch()) {
-        if (!is_friend($entry['user_id'])) continue;
-        list($title) = preg_split('/\n/', $entry['body']);
-        $entry['title'] = $title;
+        $entry['title'] = explode("\n", $entry['body'])[0];
         $entries_of_friends[] = $entry;
-        if (sizeof($entries_of_friends) >= 10) break;
     }
 
-    $comments_of_friends = array();
-    $stmt = db_execute('SELECT * FROM comments ORDER BY created_at DESC LIMIT 1000');
-    while ($comment = $stmt->fetch()) {
-        if (!is_friend($comment['user_id'])) continue;
-        $entry = db_execute('SELECT * FROM entries WHERE id = ?', array($comment['entry_id']))->fetch();
-        $entry['is_private'] = ($entry['private'] == 1);
-        if ($entry['is_private'] && !permitted($entry['user_id'])) continue;
-        $comments_of_friends[] = $comment;
-        if (sizeof($comments_of_friends) >= 10) break;
-    }
+    $comments_of_friends_query = <<<SQL
+SELECT c.user_id AS comment_owner_id, e.user_id AS entry_owner_id, c.comment AS comment, c.created_at AS created_at
+FROM comments c
+INNER JOIN entries e ON c.entry_id = e.id
+WHERE c.user_id IN ($friend_ids_in_clause)
+    AND e.private <> 1
+    AND (
+      e.user_id = ? OR
+      e.user_id IN ($friend_ids_in_clause)
+    )
+ORDER BY c.created_at DESC
+LIMIT 10
+SQL;
 
-    $friends_query = 'SELECT * FROM relations WHERE one = ? OR another = ? ORDER BY created_at DESC';
-    $friends = array();
-    $stmt = db_execute($friends_query, array(current_user()['id'], current_user()['id']));
-    while ($rel = $stmt->fetch()) {
-        $key = ($rel['one'] == current_user()['id'] ? 'another' : 'one');
-        if (!isset($friends[$rel[$key]])) $friends[$rel[$key]] = $rel['created_at'];
-    }
+    $params = array_merge($friend_ids, [$current_user['id']], $friend_ids);
+    $comments_of_friends = db_execute($comments_of_friends_query, $params)->fetchAll();
 
     $query = <<<SQL
-SELECT user_id, owner_id, DATE(created_at) AS date, MAX(created_at) AS updated
-FROM footprints
-WHERE user_id = ?
-GROUP BY user_id, owner_id, DATE(created_at)
+SELECT o.account_name AS owner_account_name, o.nick_name AS owner_nick_name, MAX(f.created_at) AS updated
+FROM footprints f INNER JOIN users o ON f.owner_id = o.id
+WHERE f.user_id = ?
+GROUP BY f.user_id, f.owner_id, DATE(created_at)
 ORDER BY updated DESC
 LIMIT 10
 SQL;
-    $footprints = db_execute($query, array(current_user()['id']))->fetchAll();
+    $footprints = db_execute($query, array($current_user['id']))->fetchAll();
 
     $locals = array(
-        'user' => current_user(),
+        'user' => $current_user,
         'profile' => $profile,
         'entries' => $entries,
         'comments_for_me' => $comments_for_me,
         'entries_of_friends' => $entries_of_friends,
         'comments_of_friends' => $comments_of_friends,
-        'friends' => $friends,
+        'friend_count' => count($friend_ids),
         'footprints' => $footprints
     );
     $app->render('index.php', $locals);
