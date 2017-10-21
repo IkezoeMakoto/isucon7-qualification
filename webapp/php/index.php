@@ -80,7 +80,7 @@ $app->get('/save_images/{from}/{to}', function (Request $request, Response $resp
 
 function db_get_user($dbh, $userId)
 {
-    $stmt = $dbh->prepare("SELECT id FROM user WHERE id = ?");
+    $stmt = $dbh->prepare("SELECT * FROM user WHERE id = ?");
     $stmt->execute([$userId]);
     return $stmt->fetch();
 }
