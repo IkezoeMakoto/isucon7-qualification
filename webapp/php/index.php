@@ -260,31 +260,31 @@ $app->get('/fetch', function (Request $request, Response $response) {
     $stmt = $dbh->query('SELECT id FROM channel');
     $channelIds = $stmt->fetchall(PDO::FETCH_COLUMN, 0);
 
-    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) FROM haveread WHERE user_id = ?");
+    $stmt = $dbh->prepare("SELECT channel_id, MAX(message_id) as last_message_id FROM haveread WHERE user_id = ? GROUP BY channel_id");
     $stmt->execute([$userId]);
     $maxMessageIds = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
 
+    $stmt = $dbh->prepare("SELECT channel_id, COUNT(id) as cnt FROM message GROUP BY channel_id");
+    $stmt->execute();
+    $allMessageCounts = $stmt->fetchAll(PDO::FETCH_ASSOC|PDO::FETCH_GROUP);
+
     $res = [];
     foreach ($channelIds as $channelId) {
-        if (isset($maxMessageIds[$channelId])) {
+        if (isset($maxMessageIds[$channelId][0]['last_message_id'])) {
             $stmt = $dbh->prepare(
-                "SELECT COUNT(*) as cnt ".
+                "SELECT COUNT(id) as cnt ".
                 "FROM message ".
                 "WHERE channel_id = ? AND ? < id"
             );
-            $stmt->execute([$channelId, $maxMessageIds[$channelId]);
+            $stmt->execute([$channelId, $maxMessageIds[$channelId][0]['last_message_id']]);
+            $unread = $stmt->fetch()['cnt'];
         } else {
-            $stmt = $dbh->prepare(
-                "SELECT COUNT(*) as cnt ".
-                "FROM message ".
-                "WHERE channel_id = ?"
-            );
-            $stmt->execute([$channelId]);
+            $unread = $allMessageCounts[$channelId][0]['cnt'];
         }
 
         $r = [];
-        $r['channel_id'] = $channelId;
-        $r['unread'] = (int)$stmt->fetch()['cnt'];
+        $r['channel_id'] = (int)$channelId;
+        $r['unread'] = (int)$unread;
         $res[] = $r;
     }
 
@@ -315,7 +315,7 @@ $app->get('/history/{channel_id}', function (Request $request, Response $respons
 
     $offset = ($page - 1) * $pageSize;
     $stmt = $dbh->prepare(
-        "SELECT id ".
+        "SELECT * ".
         "FROM message ".
         "WHERE channel_id = ? ORDER BY id DESC LIMIT $pageSize OFFSET $offset"
     );
