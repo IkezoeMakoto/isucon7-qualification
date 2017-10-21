@@ -39,5 +39,4 @@ CREATE TABLE haveread (
   PRIMARY KEY(user_id, channel_id)
 ) Engine=InnoDB DEFAULT CHARSET=utf8mb4;
 
-ALTER TABLE haveread ADD INDEX isucon_index(user_id, channel_id);
 ALTER TABLE messages ADD INDEX isucon_index(channel_id);
