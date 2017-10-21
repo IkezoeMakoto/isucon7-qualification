@@ -27,7 +27,6 @@ function getPDO()
     $user = getenv('ISUBATA_DB_USER') ?: 'root';
     $password = getenv('ISUBATA_DB_PASSWORD') ?: '';
     $dsn = "mysql:host={$host};port={$port};dbname=isubata;charset=utf8mb4";
-
     $pdo = new PDO(
         $dsn,
         $user,
@@ -253,9 +252,9 @@ $app->get('/message', function (Request $request, Response $response) {
 
     $maxMessageId = $rows[0]['id'];
     $stmt = $dbh->prepare(
-        "INSERT INTO haveread (user_id, channel_id, message_id, created_at) ".
-        "VALUES (?, ?, ?,  NOW()) ".
-        "ON DUPLICATE KEY UPDATE message_id = ?"
+        "INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at) ".
+        "VALUES (?, ?, ?, NOW(), NOW()) ".
+        "ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()"
     );
     $stmt->execute([$userId, $channelId, $maxMessageId, $maxMessageId]);
     return $response->withJson($res);
@@ -405,8 +404,8 @@ $app->post('/add_channel', function (Request $request, Response $response) {
 
     $dbh = getPDO();
     $stmt = $dbh->prepare(
-        "INSERT INTO channel (name, description, created_at) ".
-        "VALUES (?, ?, NOW())"
+        "INSERT INTO channel (name, description, updated_at, created_at) ".
+        "VALUES (?, ?, NOW(), NOW())"
     );
     $stmt->execute([$name, $description]);
     $channelId = $dbh->lastInsertId();
