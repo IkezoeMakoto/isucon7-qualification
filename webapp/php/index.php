@@ -263,6 +263,8 @@ $app->get('/fetch', function (Request $request, Response $response) {
         return $response->withStatus(403);
     }
 
+    sleep(1);
+
     $dbh = getPDO();
     $stmt = $dbh->query('SELECT id FROM channel');
     $rows = $stmt->fetchall();
