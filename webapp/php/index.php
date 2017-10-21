@@ -277,14 +277,14 @@ $app->get('/fetch', function (Request $request, Response $response) {
                 "WHERE channel_id = ? AND ? < id"
             );
             $stmt->execute([$channelId, $maxMessageIds[$channelId][0]['last_message_id']]);
-            $unread = (int)$stmt->fetch()['cnt'];
+            $unread = $stmt->fetch()['cnt'];
         } else {
-            $unread = (int)$allMessageCounts[$channelId][0]['cnt'];
+            $unread = $allMessageCounts[$channelId][0]['cnt'];
         }
 
         $r = [];
-        $r['channel_id'] = $channelId;
-        $r['unread'] = $unread;
+        $r['channel_id'] = (int)$channelId;
+        $r['unread'] = (int)$unread;
         $res[] = $r;
     }
 
